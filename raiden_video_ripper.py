@@ -310,6 +310,7 @@ class VideoProcessingThread(threading.Thread):
 
     def run_ffmpeg(self, arguments, format_title):
         command = [arguments[0], "-progress", "-"] + arguments[1:]
+        print(f"Executing FFmpeg command: {' '.join(command)}")
         startup_info = None
         if sys.platform == "win32":
             startup_info = subprocess.STARTUPINFO()
@@ -320,12 +321,13 @@ class VideoProcessingThread(threading.Thread):
             self.current_process = subprocess.Popen(
                 command,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 startupinfo=startup_info,
                 text=True,
                 bufsize=1
             )
-        except Exception:
+        except Exception as e:
+            print(f"Failed to start FFmpeg: {e}")
             return False
 
         duration_milliseconds = self.end_position - self.start_position
@@ -337,6 +339,7 @@ class VideoProcessingThread(threading.Thread):
             if not line:
                 break
             line = line.strip()
+            print(f"FFmpeg: {line}")
             if line.startswith("out_time_us="):
                 try:
                     microseconds = int(line.split("=")[1])
@@ -347,9 +350,10 @@ class VideoProcessingThread(threading.Thread):
                 except ValueError:
                     pass
             elif line.startswith("progress=end"):
-                break
+                pass # Continue reading remaining logs
 
         self.current_process.wait()
+        print(f"FFmpeg process finished with return code: {self.current_process.returncode}")
         return self.current_process.returncode == 0
 
     def cancel(self):

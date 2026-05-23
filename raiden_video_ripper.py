@@ -2,8 +2,8 @@ import os
 import sys
 import subprocess
 import threading
+import vlc
 import wx
-import wx.media
 import wx.adv
 
 APPLICATION_NAME = "Raiden Video Ripper"
@@ -32,7 +32,7 @@ class TimelineWidget(wx.Panel):
         self.slider_width = 20
         self.slider_height = 20
         self.line_height = 4
-        
+
         self.on_start_changed = None
         self.on_end_changed = None
         self.on_playback_changed = None
@@ -382,6 +382,10 @@ class EditorWindow(wx.Frame):
         self.is_processing = False
         self.worker_thread = None
         self.progress_window = None
+        self.media_loaded = False
+
+        self.vlc_instance = vlc.Instance()
+        self.vlc_player = self.vlc_instance.media_player_new()
 
         self.output_formats = [
             OutputFormat("outputFormatMp4", "Video (mp4)", "mp4", [], True),
@@ -396,16 +400,14 @@ class EditorWindow(wx.Frame):
 
         self.SetBackgroundColour(wx.Colour(30, 30, 30))
 
-        main_panel = wx.Panel(self)
-        main_panel.SetBackgroundColour(wx.Colour(30, 30, 30))
+        self.video_panel = wx.Panel(self, style=wx.SIMPLE_BORDER)
+        self.video_panel.SetBackgroundColour(wx.Colour(0, 0, 0))
+        self.vlc_player.set_hwnd(self.video_panel.GetHandle())
 
-        try:
-            self.media_ctrl = wx.media.MediaCtrl(main_panel, style=wx.SIMPLE_BORDER, szBackend=wx.media.MEDIABACKEND_WMP10)
-        except Exception:
-            self.media_ctrl = wx.media.MediaCtrl(main_panel, style=wx.SIMPLE_BORDER)
-        self.media_ctrl.SetBackgroundColour(wx.Colour(0, 0, 0))
+        bottom_panel = wx.Panel(self)
+        bottom_panel.SetBackgroundColour(wx.Colour(30, 30, 30))
 
-        self.timeline_widget = TimelineWidget(main_panel)
+        self.timeline_widget = TimelineWidget(bottom_panel)
         self.timeline_widget.on_start_changed = self.on_start_changed
         self.timeline_widget.on_end_changed = self.on_end_changed
         self.timeline_widget.on_playback_changed = self.on_playback_changed
@@ -416,7 +418,7 @@ class EditorWindow(wx.Frame):
         self.timeline_widget.on_playback_drag_started = self.on_slider_drag_started
         self.timeline_widget.on_playback_drag_finished = self.on_slider_drag_finished
 
-        controls_panel = wx.Panel(main_panel)
+        controls_panel = wx.Panel(bottom_panel)
         controls_panel.SetBackgroundColour(wx.Colour(30, 30, 30))
 
         self.play_button = wx.Button(controls_panel, label="▶", size=(40, 30))
@@ -451,19 +453,24 @@ class EditorWindow(wx.Frame):
         controls_sizer.Add(self.start_button, 0, wx.ALIGN_CENTER_VERTICAL | wx.LEFT, 15)
         controls_panel.SetSizer(controls_sizer)
 
-        panel_sizer = wx.BoxSizer(wx.VERTICAL)
-        panel_sizer.Add(self.media_ctrl, 1, wx.EXPAND | wx.ALL, 5)
-        panel_sizer.Add(self.timeline_widget, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
-        panel_sizer.Add(controls_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
-        main_panel.SetSizer(panel_sizer)
+        bottom_sizer = wx.BoxSizer(wx.VERTICAL)
+        bottom_sizer.Add(self.timeline_widget, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
+        bottom_sizer.Add(controls_panel, 0, wx.EXPAND | wx.ALL, 10)
+        bottom_panel.SetSizer(bottom_sizer)
 
         frame_sizer = wx.BoxSizer(wx.VERTICAL)
-        frame_sizer.Add(main_panel, 1, wx.EXPAND)
+        frame_sizer.Add(self.video_panel, 1, wx.EXPAND | wx.ALL, 5)
+        frame_sizer.Add(bottom_panel, 0, wx.EXPAND)
         self.SetSizer(frame_sizer)
 
         self.create_menu()
 
-        self.media_ctrl.Bind(wx.media.EVT_MEDIA_LOADED, self.on_media_loaded)
+        self.SetDropTarget(VideoFileDropTarget(self.open_file))
+        self.video_panel.SetDropTarget(VideoFileDropTarget(self.open_file))
+
+        vlc_event_manager = self.vlc_player.event_manager()
+        vlc_event_manager.event_attach(vlc.EventType.MediaPlayerLengthChanged, self.on_vlc_length_changed)
+        vlc_event_manager.event_attach(vlc.EventType.MediaPlayerEndReached, self.on_vlc_end_reached)
 
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.on_timer_tick, self.timer)
@@ -472,11 +479,9 @@ class EditorWindow(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.Bind(wx.EVT_KEY_DOWN, self.on_key_down)
 
-        self.SetDropTarget(VideoFileDropTarget(self.open_file))
-        self.media_ctrl.SetDropTarget(VideoFileDropTarget(self.open_file))
-
         saved_volume = self.config.ReadInt("Volume", 100)
         self.volume_slider.SetValue(saved_volume)
+        self.vlc_player.audio_set_volume(saved_volume)
 
         saved_width = self.config.ReadInt("window_width", 800)
         saved_height = self.config.ReadInt("window_height", 600)
@@ -536,30 +541,45 @@ class EditorWindow(wx.Frame):
             if self.progress_window:
                 self.progress_window.Raise()
             return
-        if path == self.file_path:
-            return
         self.file_path = path
+        self.file_duration = 0
+        self.media_loaded = False
         directory = os.path.dirname(path)
         self.config.Write("previousWorkingPathKey", directory)
         self.config.Flush()
-        self.file_duration = 0
-        if not self.media_ctrl.Load(path):
-            wx.MessageBox("Failed to load video file.", "Error", wx.ICON_ERROR)
-            self.file_path = ""
-            self.update_window_title()
+        media = self.vlc_instance.media_new(path)
+        self.vlc_player.set_media(media)
+        self.vlc_player.play()
 
-    def on_media_loaded(self, event):
-        self.file_duration = self.media_ctrl.Length()
+    def on_vlc_length_changed(self, event):
+        wx.CallAfter(self.on_media_loaded)
+
+    def on_vlc_end_reached(self, event):
+        wx.CallAfter(self.on_media_finished)
+
+    def on_media_loaded(self):
+        if self.media_loaded:
+            return
+        duration = self.vlc_player.get_length()
+        if duration <= 0:
+            return
+        self.media_loaded = True
+        self.file_duration = duration
         self.timeline_widget.maximum_value = self.file_duration
         self.timeline_widget.start_value = 0
         self.timeline_widget.playback_value = 0
         self.timeline_widget.end_value = self.file_duration
         self.timeline_widget.Refresh()
-        self.media_ctrl.Play()
         volume = self.volume_slider.GetValue()
-        self.media_ctrl.SetVolume(volume / 100.0)
+        self.vlc_player.audio_set_volume(volume)
         self.update_duration_label()
         self.update_window_title()
+
+    def on_media_finished(self):
+        self.vlc_player.stop()
+        self.timeline_widget.playback_value = 0
+        self.timeline_widget.Refresh()
+        self.update_duration_label()
 
     def on_exit(self, event):
         self.Close()
@@ -621,66 +641,75 @@ class EditorWindow(wx.Frame):
 
     def on_start_changed(self, value):
         if self.preview_item.IsChecked():
-            self.media_ctrl.Seek(value)
+            self.vlc_player.set_time(value)
         self.update_duration_label()
 
     def on_end_changed(self, value):
         if self.preview_item.IsChecked():
-            self.media_ctrl.Seek(value)
+            self.vlc_player.set_time(value)
         self.update_duration_label()
 
     def on_playback_changed(self, value):
-        self.media_ctrl.Seek(value)
+        self.vlc_player.set_time(value)
         self.update_duration_label()
 
     def on_slider_drag_started(self):
-        self.saved_media_state = self.media_ctrl.GetState()
-        if self.saved_media_state == wx.media.MEDIASTATE_PLAYING:
-            self.media_ctrl.Pause()
+        self.saved_media_state = self.vlc_player.get_state()
+        if self.saved_media_state == vlc.State.Playing:
+            self.vlc_player.set_pause(1)
 
     def on_slider_drag_finished(self):
-        if hasattr(self, "saved_media_state") and self.saved_media_state == wx.media.MEDIASTATE_PLAYING:
-            self.media_ctrl.Play()
+        if hasattr(self, "saved_media_state") and self.saved_media_state == vlc.State.Playing:
+            self.vlc_player.play()
 
     def on_play_toggle(self, event):
-        state = self.media_ctrl.GetState()
-        if state == wx.media.MEDIASTATE_PLAYING:
-            self.media_ctrl.Pause()
+        state = self.vlc_player.get_state()
+        if state == vlc.State.Playing:
+            self.vlc_player.set_pause(1)
         else:
-            self.media_ctrl.Play()
+            self.vlc_player.play()
 
     def on_stop(self, event):
-        self.media_ctrl.Stop()
+        self.vlc_player.stop()
+        self.timeline_widget.playback_value = 0
+        self.timeline_widget.Refresh()
+        self.update_duration_label()
 
     def on_volume_changed(self, event):
         volume = self.volume_slider.GetValue()
-        self.media_ctrl.SetVolume(volume / 100.0)
+        self.vlc_player.audio_set_volume(volume)
         self.config.WriteInt("Volume", volume)
         self.config.Flush()
 
     def on_timer_tick(self, event):
-        state = self.media_ctrl.GetState()
-        if state == wx.media.MEDIASTATE_PLAYING:
+        state = self.vlc_player.get_state()
+        is_playing = state == vlc.State.Playing
+        is_paused = state == vlc.State.Paused
+
+        if is_playing:
             self.play_button.SetLabel("⏸")
             self.stop_button.Enable(True)
         else:
             self.play_button.SetLabel("▶")
-            self.stop_button.Enable(state == wx.media.MEDIASTATE_PAUSED)
+            self.stop_button.Enable(is_paused)
 
-        if not self.file_duration or state != wx.media.MEDIASTATE_PLAYING:
+        if not self.file_duration or not is_playing:
             return
 
-        position = self.media_ctrl.Tell()
+        position = self.vlc_player.get_time()
+        if position < 0:
+            return
+
         start_val = self.timeline_widget.start_value
         end_val = self.timeline_widget.end_value
 
         if self.preview_item.IsChecked():
             if position > end_val or position < start_val:
-                self.media_ctrl.Seek(start_val)
+                self.vlc_player.set_time(start_val)
                 position = start_val
         elif position >= self.file_duration - 100:
-            self.media_ctrl.Seek(0)
-            self.media_ctrl.Stop()
+            self.vlc_player.set_time(0)
+            self.vlc_player.stop()
             position = 0
 
         self.timeline_widget.playback_value = position
@@ -704,7 +733,7 @@ class EditorWindow(wx.Frame):
         new_value = self.timeline_widget.x_to_value(new_x)
         self.timeline_widget.playback_value = new_value
         self.timeline_widget.Refresh()
-        self.media_ctrl.Seek(new_value)
+        self.vlc_player.set_time(new_value)
         self.update_duration_label()
 
     def on_start(self, event):
@@ -720,7 +749,7 @@ class EditorWindow(wx.Frame):
         if end_pos < start_pos:
             return
 
-        self.media_ctrl.Pause()
+        self.vlc_player.set_pause(1)
         self.is_processing = True
 
         self.progress_window = ProgressBarWindow(self, "Processing", "Preparing...")
@@ -777,6 +806,9 @@ class EditorWindow(wx.Frame):
         self.timer.Stop()
         if self.is_processing:
             self.cancel_in_progress()
+        self.vlc_player.stop()
+        self.vlc_player.release()
+        self.vlc_instance.release()
         event.Skip()
 
 if __name__ == "__main__":

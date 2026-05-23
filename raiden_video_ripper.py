@@ -58,6 +58,7 @@ class TimelineWidget(wx.Panel):
             self.end_bitmap = None
 
         self.SetMinSize((100, 30))
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
         self.Bind(wx.EVT_PAINT, self.on_paint)
         self.Bind(wx.EVT_SIZE, self.on_size)
@@ -398,7 +399,10 @@ class EditorWindow(wx.Frame):
         main_panel = wx.Panel(self)
         main_panel.SetBackgroundColour(wx.Colour(30, 30, 30))
 
-        self.media_ctrl = wx.media.MediaCtrl(main_panel, style=wx.SIMPLE_BORDER)
+        try:
+            self.media_ctrl = wx.media.MediaCtrl(main_panel, style=wx.SIMPLE_BORDER, szBackend=wx.media.MEDIABACKEND_WMP10)
+        except Exception:
+            self.media_ctrl = wx.media.MediaCtrl(main_panel, style=wx.SIMPLE_BORDER)
         self.media_ctrl.SetBackgroundColour(wx.Colour(0, 0, 0))
 
         self.timeline_widget = TimelineWidget(main_panel)

@@ -195,9 +195,9 @@ class TimelineWidget(wx.Panel):
             dc.DrawLine(start_x, y_center, end_x, y_center)
 
         if not self.freeplay_mode:
-            self.draw_thumb(dc, self.start_value, 'left', self.start_bitmap, wx.Colour(46, 204, 113))
-            self.draw_thumb(dc, self.end_value, 'right', self.end_bitmap, wx.Colour(231, 76, 60))
-        self.draw_thumb(dc, self.playback_value, 'center', self.playback_bitmap, wx.Colour(0, 122, 217))
+            self.draw_thumb(dc, self.start_value, 'left', self.start_bitmap, wx.Colour(255, 255, 255))
+            self.draw_thumb(dc, self.end_value, 'right', self.end_bitmap, wx.Colour(255, 255, 255))
+        self.draw_thumb(dc, self.playback_value, 'center', self.playback_bitmap, wx.Colour(255, 255, 255))
 
 class ProgressBarWindow(wx.Dialog):
     def __init__(self, parent, title, status_text):
@@ -276,7 +276,7 @@ class SuccessWindow(wx.Dialog):
         self.EndModal(wx.ID_OK)
 
 class VideoProcessingThread(threading.Thread):
-    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished):
+    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False):
         super().__init__()
         self.start_position = start_position
         self.end_position = end_position
@@ -284,10 +284,25 @@ class VideoProcessingThread(threading.Thread):
         self.output_formats = output_formats
         self.callback_progress = callback_progress
         self.callback_finished = callback_finished
+        self.stabilize_video = stabilize_video
         self.current_process = None
         self.is_cancelled = False
 
     def run(self):
+        trf_filename = os.path.basename(self.video_path) + ".trf"
+        working_directory = os.path.dirname(self.video_path)
+        if self.stabilize_video:
+            pass1_args = [
+                "ffmpeg", "-y", "-i", self.video_path,
+                "-ss", f"{self.start_position}ms", "-to", f"{self.end_position}ms",
+                "-vf", f"vidstabdetect=shakiness=10:accuracy=15:result='{trf_filename}'",
+                "-f", "null", "-"
+            ]
+            success = self.run_ffmpeg(pass1_args, "Stabilization Pass 1", working_directory)
+            if not success or self.is_cancelled:
+                self.callback_finished(False, self.is_cancelled)
+                return
+
         for output_format in self.output_formats:
             if self.is_cancelled:
                 break
@@ -299,16 +314,20 @@ class VideoProcessingThread(threading.Thread):
                 "-ss", f"{self.start_position}ms",
                 "-to", f"{self.end_position}ms"
             ]
+
+            if self.stabilize_video:
+                arguments.extend(["-vf", f"vidstabtransform=input='{trf_filename}':zoom=5"])
+
             arguments.extend(output_format.custom_arguments)
             arguments.append(output_path)
 
-            success = self.run_ffmpeg(arguments, output_format.title)
+            success = self.run_ffmpeg(arguments, output_format.title, working_directory)
             if not success or self.is_cancelled:
                 self.callback_finished(False, self.is_cancelled)
                 return
         self.callback_finished(True, False)
 
-    def run_ffmpeg(self, arguments, format_title):
+    def run_ffmpeg(self, arguments, format_title, working_directory=None):
         command = [arguments[0], "-progress", "-"] + arguments[1:]
         print(f"Executing FFmpeg command: {' '.join(command)}")
         startup_info = None
@@ -324,7 +343,8 @@ class VideoProcessingThread(threading.Thread):
                 stderr=subprocess.STDOUT,
                 startupinfo=startup_info,
                 text=True,
-                bufsize=1
+                bufsize=1,
+                cwd=working_directory
             )
         except Exception as e:
             print(f"Failed to start FFmpeg: {e}")
@@ -509,6 +529,12 @@ class EditorWindow(wx.Frame):
         self.preview_item.Check(preview_checked)
         self.timeline_widget.freeplay_mode = not preview_checked
         self.Bind(wx.EVT_MENU, self.on_preview_toggle, self.preview_item)
+        
+        self.stabilize_item = options_menu.AppendCheckItem(wx.ID_ANY, "Stabilize Video")
+        stabilize_checked = self.config.ReadBool("stabilizeCheckboxState", False)
+        self.stabilize_item.Check(stabilize_checked)
+        self.Bind(wx.EVT_MENU, self.on_stabilize_toggle, self.stabilize_item)
+        
         options_menu.AppendSeparator()
 
         self.format_menu_items = {}
@@ -594,6 +620,11 @@ class EditorWindow(wx.Frame):
         self.config.WriteBool("previewCheckboxState", is_checked)
         self.config.Flush()
         self.timeline_widget.Refresh()
+
+    def on_stabilize_toggle(self, event):
+        is_checked = self.stabilize_item.IsChecked()
+        self.config.WriteBool("stabilizeCheckboxState", is_checked)
+        self.config.Flush()
 
     def on_format_toggle(self, event):
         item_id = event.GetId()
@@ -764,7 +795,8 @@ class EditorWindow(wx.Frame):
             self.file_path,
             selected_formats,
             self.on_worker_progress,
-            self.on_worker_finished
+            self.on_worker_finished,
+            self.stabilize_item.IsChecked()
         )
         self.worker_thread.start()
         self.progress_window.ShowModal()

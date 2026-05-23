@@ -396,7 +396,7 @@ class EditorWindow(wx.Frame):
             OutputFormat("outputFormatGif", "Animation (Gif)", "gif", [], False),
             OutputFormat("outputFormatWebp", "Animation (webp)", "webp", [], False),
             OutputFormat("outputFormatWebm", "Video (WebM)", "webm", [], False),
-            OutputFormat("outputFormatOgv", "Video (ogv)", "ogv", [], False),
+            OutputFormat("outputFormatOgv", "Video (ogv)", "ogv", ["-q:v", "9", "-q:a", "9"], False),
             OutputFormat("outputFormatMp3", "Audio (mp3)", "mp3", [], False),
             OutputFormat("outputFormatWav", "Audio (wav)", "wav", [], False),
             OutputFormat("outputFormatOgg", "Audio (ogg)", "ogg", ["-vn", "-c:a", "libvorbis"], False)
@@ -783,7 +783,8 @@ class EditorWindow(wx.Frame):
     def handle_worker_finished(self, success, cancelled):
         self.is_processing = False
         if self.progress_window:
-            self.progress_window.EndModal(wx.ID_OK if success else wx.ID_CANCEL)
+            if self.progress_window.IsModal():
+                self.progress_window.EndModal(wx.ID_OK if success else wx.ID_CANCEL)
             self.progress_window.Destroy()
             self.progress_window = None
 

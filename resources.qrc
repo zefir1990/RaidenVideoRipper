@@ -1,8 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>resources/images/endSliderImage.png</file>
-        <file>resources/images/playbackSliderImage.png</file>
-        <file>resources/images/startSliderImage.png</file>
-        <file>resources/translation/raidenvideoripper_ru.qm</file>
-    </qresource>
-</RCC>

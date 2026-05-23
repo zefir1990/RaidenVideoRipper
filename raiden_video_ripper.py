@@ -373,7 +373,9 @@ class VideoFileDropTarget(wx.FileDropTarget):
 class EditorWindow(wx.Frame):
     def __init__(self):
         super().__init__(None, title=APPLICATION_NAME)
-        self.config = wx.Config(APPLICATION_NAME, COMPANY_NAME)
+        configuration_path = wx.StandardPaths.Get().GetUserConfigDir()
+        configuration_file_path = os.path.join(configuration_path, "raiden_video_ripper_config.ini")
+        self.config = wx.FileConfig(localFilename=configuration_file_path)
         self.file_path = ""
         self.file_duration = 0
         self.is_processing = False

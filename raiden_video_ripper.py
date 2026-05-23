@@ -551,7 +551,7 @@ class EditorWindow(wx.Frame):
         directory = os.path.dirname(path)
         self.config.Write("previousWorkingPathKey", directory)
         self.config.Flush()
-        media = self.vlc_instance.media_new(path)
+        media = self.vlc_instance.media_new_path(path)
         self.vlc_player.set_media(media)
         self.vlc_player.play()
 

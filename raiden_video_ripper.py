@@ -398,6 +398,7 @@ class VideoFileDropTarget(wx.FileDropTarget):
 class EditorWindow(wx.Frame):
     def __init__(self):
         super().__init__(None, title=APPLICATION_NAME)
+        self.last_play_state = None
         configuration_path = wx.StandardPaths.Get().GetUserConfigDir()
         configuration_file_path = os.path.join(configuration_path, "raiden_video_ripper_config.ini")
         self.config = wx.FileConfig(localFilename=configuration_file_path)
@@ -663,11 +664,11 @@ class EditorWindow(wx.Frame):
         info = wx.adv.AboutDialogInfo()
         info.SetName(APPLICATION_NAME)
         info.SetVersion(APPLICATION_VERSION)
-        info.SetCopyright("Copyright © 2025 I/E Ilia Prokhorov")
+        info.SetCopyright("Copyright © 2026 I/E Ilia Prokhorov")
         info.SetWebSite("https://github.com/demensdeum/RaidenVideoRipper")
         info.SetDescription(
             "Raiden Video Ripper is an open-source project designed for video editing and format conversion.\n"
-            "It is built using wxPython and allows you to trim and convert videos to various formats."
+            "It is built using FFmpeg, wxPython and allows you to trim and convert videos to various formats."
         )
         wx.adv.AboutBox(info)
 
@@ -745,19 +746,21 @@ class EditorWindow(wx.Frame):
         is_playing = state == vlc.State.Playing
         is_paused = state == vlc.State.Paused
 
-        if is_playing:
-            if self.pause_bitmap and self.pause_bitmap.IsOk():
-                self.play_button.SetBitmap(self.pause_bitmap)
-                self.play_button.SetLabel("")
+        if is_playing != self.last_play_state:
+            self.last_play_state = is_playing
+
+            if is_playing:
+                if self.pause_bitmap and self.pause_bitmap.IsOk():
+                    self.play_button.SetBitmap(self.pause_bitmap)
+                    self.play_button.SetLabel("")
+                else:
+                    self.play_button.SetLabel("⏸")
             else:
-                self.play_button.SetLabel("⏸")
-            self.stop_button.Enable(True)
-        else:
-            if self.play_bitmap and self.play_bitmap.IsOk():
-                self.play_button.SetBitmap(self.play_bitmap)
-                self.play_button.SetLabel("")
-            else:
-                self.play_button.SetLabel("▶")
+                if self.play_bitmap and self.play_bitmap.IsOk():
+                    self.play_button.SetBitmap(self.play_bitmap)
+                    self.play_button.SetLabel("")
+                else:
+                    self.play_button.SetLabel("▶")
             self.stop_button.Enable(is_paused)
 
         if not self.file_duration or not is_playing:

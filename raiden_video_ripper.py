@@ -408,6 +408,20 @@ class EditorWindow(wx.Frame):
         self.progress_window = None
         self.media_loaded = False
 
+        script_directory = os.path.dirname(os.path.abspath(__file__))
+        play_image_path = os.path.join(script_directory, "resources", "images", "playIcon.png")
+        pause_image_path = os.path.join(script_directory, "resources", "images", "pauseIcon.png")
+        stop_image_path = os.path.join(script_directory, "resources", "images", "stopIcon.png")
+
+        try:
+            self.play_bitmap = wx.Bitmap(play_image_path, wx.BITMAP_TYPE_PNG)
+            self.pause_bitmap = wx.Bitmap(pause_image_path, wx.BITMAP_TYPE_PNG)
+            self.stop_bitmap = wx.Bitmap(stop_image_path, wx.BITMAP_TYPE_PNG)
+        except Exception:
+            self.play_bitmap = None
+            self.pause_bitmap = None
+            self.stop_bitmap = None
+
         self.vlc_instance = vlc.Instance()
         self.vlc_player = self.vlc_instance.media_player_new()
 
@@ -445,8 +459,18 @@ class EditorWindow(wx.Frame):
         controls_panel = wx.Panel(bottom_panel)
         controls_panel.SetBackgroundColour(wx.Colour(30, 30, 30))
 
-        self.play_button = wx.Button(controls_panel, label="▶", size=(40, 30))
-        self.stop_button = wx.Button(controls_panel, label="⏹", size=(40, 30))
+        self.play_button = wx.Button(controls_panel, size=(40, 30))
+        self.stop_button = wx.Button(controls_panel, size=(40, 30))
+
+        if self.play_bitmap and self.play_bitmap.IsOk():
+            self.play_button.SetBitmap(self.play_bitmap)
+        else:
+            self.play_button.SetLabel("▶")
+
+        if self.stop_bitmap and self.stop_bitmap.IsOk():
+            self.stop_button.SetBitmap(self.stop_bitmap)
+        else:
+            self.stop_button.SetLabel("⏹")
         self.volume_slider = wx.Slider(controls_panel, value=100, minValue=0, maxValue=100, size=(80, -1), style=wx.SL_HORIZONTAL)
         self.duration_label = wx.StaticText(controls_panel, label="00:00:00.000 - 00:00:00.000 - 00:00:00.000", style=wx.ALIGN_CENTER)
         self.start_button = wx.Button(controls_panel, label="START", size=(160, 30))
@@ -722,10 +746,18 @@ class EditorWindow(wx.Frame):
         is_paused = state == vlc.State.Paused
 
         if is_playing:
-            self.play_button.SetLabel("⏸")
+            if self.pause_bitmap and self.pause_bitmap.IsOk():
+                self.play_button.SetBitmap(self.pause_bitmap)
+                self.play_button.SetLabel("")
+            else:
+                self.play_button.SetLabel("⏸")
             self.stop_button.Enable(True)
         else:
-            self.play_button.SetLabel("▶")
+            if self.play_bitmap and self.play_bitmap.IsOk():
+                self.play_button.SetBitmap(self.play_bitmap)
+                self.play_button.SetLabel("")
+            else:
+                self.play_button.SetLabel("▶")
             self.stop_button.Enable(is_paused)
 
         if not self.file_duration or not is_playing:

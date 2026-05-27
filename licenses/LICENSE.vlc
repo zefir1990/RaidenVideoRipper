@@ -1,0 +1,12 @@
+VLC License
+===========
+
+This project uses the VLC media player libraries via python-vlc bindings for video playback rendering.
+
+The core VLC media player (libVLC) is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later.
+
+A copy of the GNU Lesser General Public License (LGPL) version 2.1 is included in the project root directory as:
+COPYING.LGPLv2.1
+
+You can also find more details about VLC licensing on their official website:
+https://www.videolan.org/legal.html

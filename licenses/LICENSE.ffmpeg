@@ -1,0 +1,12 @@
+FFmpeg License
+==============
+
+This project uses FFmpeg (https://ffmpeg.org/) for video processing and conversion.
+
+FFmpeg is licensed under the GNU Lesser General Public License (LGPL) version 2.1 or later. 
+
+A copy of the GNU Lesser General Public License (LGPL) version 2.1 is included in the project root directory as:
+COPYING.LGPLv2.1
+
+You can also find more details about FFmpeg licensing on their official website:
+https://ffmpeg.org/legal.html

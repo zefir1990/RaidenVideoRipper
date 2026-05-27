@@ -419,6 +419,10 @@ class EditorWindow(wx.Frame):
         self.media_loaded = False
 
         script_directory = os.path.dirname(os.path.abspath(__file__))
+        icon_path = os.path.join(script_directory, "resources", "icons", "applicationIcon.ico")
+        if os.path.exists(icon_path):
+            self.SetIcon(wx.Icon(icon_path, wx.BITMAP_TYPE_ICO))
+
         play_image_path = os.path.join(script_directory, "resources", "images", "playIcon.png")
         pause_image_path = os.path.join(script_directory, "resources", "images", "pauseIcon.png")
         stop_image_path = os.path.join(script_directory, "resources", "images", "stopIcon.png")
@@ -767,7 +771,7 @@ class EditorWindow(wx.Frame):
         info.SetWebSite("https://github.com/demensdeum/RaidenVideoRipper")
         info.SetDescription(
             "Raiden Video Ripper is an open-source project designed for video editing and format conversion.\n"
-            "It is built using FFmpeg, wxPython and allows you to trim and convert videos to various formats."
+            "It is built using FFmpeg, VLC, wxPython and allows you to trim and convert videos to various formats."
         )
         wx.adv.AboutBox(info)
 

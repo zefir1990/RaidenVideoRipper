@@ -6,6 +6,7 @@ import vlc
 import wx
 import wx.adv
 from crop_overlay import CropOverlay
+from translation import translate_text as _
 
 APPLICATION_NAME = "Raiden Video Ripper"
 APPLICATION_VERSION = "1.0.3.0"
@@ -206,7 +207,7 @@ class ProgressBarWindow(wx.Dialog):
         self.parent = parent
         self.status_label = wx.StaticText(self, label=status_text)
         self.gauge = wx.Gauge(self, range=100, size=(250, 25))
-        self.cancel_button = wx.Button(self, label="Cancel")
+        self.cancel_button = wx.Button(self, label=_("Cancel"))
         self.cancel_button.Bind(wx.EVT_BUTTON, self.on_cancel)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -235,18 +236,18 @@ class ProgressBarWindow(wx.Dialog):
 
 class SuccessWindow(wx.Dialog):
     def __init__(self, parent, file_path):
-        super().__init__(parent, title="Success", style=wx.DEFAULT_DIALOG_STYLE)
+        super().__init__(parent, title=_("Success"), style=wx.DEFAULT_DIALOG_STYLE)
         self.file_path = file_path
 
         emoji_font = wx.Font(36, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
         emoji_label = wx.StaticText(self, label="✅")
         emoji_label.SetFont(emoji_font)
 
-        message_label = wx.StaticText(self, label="All files were successfully cut.")
-        link_button = wx.Button(self, label="Click here to open the location.")
+        message_label = wx.StaticText(self, label=_("All files were successfully cut."))
+        link_button = wx.Button(self, label=_("Click here to open the location."))
         link_button.Bind(wx.EVT_BUTTON, self.on_link_clicked)
 
-        ok_button = wx.Button(self, label="OK")
+        ok_button = wx.Button(self, label=_("OK"))
         ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -440,14 +441,14 @@ class EditorWindow(wx.Frame):
         self.vlc_player = self.vlc_instance.media_player_new()
 
         self.output_formats = [
-            OutputFormat("outputFormatMp4", "Video (mp4)", "mp4", [], True),
-            OutputFormat("outputFormatGif", "Animation (Gif)", "gif", [], False),
-            OutputFormat("outputFormatWebp", "Animation (webp)", "webp", [], False),
-            OutputFormat("outputFormatWebm", "Video (WebM)", "webm", [], False),
-            OutputFormat("outputFormatOgv", "Video (ogv)", "ogv", ["-q:v", "9", "-q:a", "9"], False),
-            OutputFormat("outputFormatMp3", "Audio (mp3)", "mp3", [], False),
-            OutputFormat("outputFormatWav", "Audio (wav)", "wav", [], False),
-            OutputFormat("outputFormatOgg", "Audio (ogg)", "ogg", ["-vn", "-c:a", "libvorbis"], False)
+            OutputFormat("outputFormatMp4", _("Video (mp4)"), "mp4", [], True),
+            OutputFormat("outputFormatGif", _("Animation (Gif)"), "gif", [], False),
+            OutputFormat("outputFormatWebp", _("Animation (webp)"), "webp", [], False),
+            OutputFormat("outputFormatWebm", _("Video (WebM)"), "webm", [], False),
+            OutputFormat("outputFormatOgv", _("Video (ogv)"), "ogv", ["-q:v", "9", "-q:a", "9"], False),
+            OutputFormat("outputFormatMp3", _("Audio (mp3)"), "mp3", [], False),
+            OutputFormat("outputFormatWav", _("Audio (wav)"), "wav", [], False),
+            OutputFormat("outputFormatOgg", _("Audio (ogg)"), "ogg", ["-vn", "-c:a", "libvorbis"], False)
         ]
 
         self.SetBackgroundColour(wx.Colour(30, 30, 30))
@@ -492,7 +493,7 @@ class EditorWindow(wx.Frame):
             self.stop_button.SetLabel("⏹")
         self.volume_slider = wx.Slider(controls_panel, value=100, minValue=0, maxValue=100, size=(80, -1), style=wx.SL_HORIZONTAL)
         self.duration_label = wx.StaticText(controls_panel, label="00:00:00.000 - 00:00:00.000 - 00:00:00.000", style=wx.ALIGN_CENTER)
-        self.start_button = wx.Button(controls_panel, label="START", size=(160, 30))
+        self.start_button = wx.Button(controls_panel, label=_("START"), size=(160, 30))
 
         button_font = wx.Font(11, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
         self.play_button.SetFont(button_font)
@@ -569,25 +570,25 @@ class EditorWindow(wx.Frame):
     def create_menu(self):
         menubar = wx.MenuBar()
         file_menu = wx.Menu()
-        open_item = file_menu.Append(wx.ID_OPEN, "&Open...\tCtrl+O")
-        exit_item = file_menu.Append(wx.ID_EXIT, "E&xit")
-        menubar.Append(file_menu, "&File")
+        open_item = file_menu.Append(wx.ID_OPEN, _("&Open...\tCtrl+O"))
+        exit_item = file_menu.Append(wx.ID_EXIT, _("E&xit"))
+        menubar.Append(file_menu, _("&File"))
         self.Bind(wx.EVT_MENU, self.on_open, open_item)
         self.Bind(wx.EVT_MENU, self.on_exit, exit_item)
 
         options_menu = wx.Menu()
-        self.preview_item = options_menu.AppendCheckItem(wx.ID_ANY, "Preview")
+        self.preview_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Preview"))
         preview_checked = self.config.ReadBool("previewCheckboxState", True)
         self.preview_item.Check(preview_checked)
         self.timeline_widget.freeplay_mode = not preview_checked
         self.Bind(wx.EVT_MENU, self.on_preview_toggle, self.preview_item)
         
-        self.stabilize_item = options_menu.AppendCheckItem(wx.ID_ANY, "Stabilize Video")
+        self.stabilize_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Stabilize Video"))
         stabilize_checked = self.config.ReadBool("stabilizeCheckboxState", False)
         self.stabilize_item.Check(stabilize_checked)
         self.Bind(wx.EVT_MENU, self.on_stabilize_toggle, self.stabilize_item)
 
-        self.crop_item = options_menu.AppendCheckItem(wx.ID_ANY, "Crop")
+        self.crop_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Crop"))
         crop_checked = self.config.ReadBool("cropCheckboxState", False)
         self.crop_item.Check(crop_checked)
         self.Bind(wx.EVT_MENU, self.on_crop_toggle, self.crop_item)
@@ -603,12 +604,12 @@ class EditorWindow(wx.Frame):
             menu_item.Check(is_checked)
             self.format_menu_items[menu_item.GetId()] = output_format
             self.Bind(wx.EVT_MENU, self.on_format_toggle, menu_item)
-        menubar.Append(options_menu, "&Options")
+        menubar.Append(options_menu, _("&Options"))
 
         about_menu = wx.Menu()
-        about_app_item = about_menu.Append(wx.ID_ANY, "About Raiden Video Ripper")
-        about_wx_item = about_menu.Append(wx.ID_ANY, "About wxWidgets")
-        menubar.Append(about_menu, "&About")
+        about_app_item = about_menu.Append(wx.ID_ANY, _("About Raiden Video Ripper"))
+        about_wx_item = about_menu.Append(wx.ID_ANY, _("About wxWidgets"))
+        menubar.Append(about_menu, _("&About"))
         self.Bind(wx.EVT_MENU, self.on_about_app, about_app_item)
         self.Bind(wx.EVT_MENU, self.on_about_wx, about_wx_item)
 
@@ -617,8 +618,8 @@ class EditorWindow(wx.Frame):
     def on_open(self, event):
         movies_dir = wx.StandardPaths.Get().GetDocumentsDir()
         last_path = self.config.Read("previousWorkingPathKey", movies_dir)
-        with wx.FileDialog(self, "Open Video File", defaultDir=last_path,
-                           wildcard="Video Files|*.mp4;*.avi;*.mkv;*.mov;*.wmv;*.flv;*.webm;*.ogv|All Files|*.*",
+        with wx.FileDialog(self, _("Open Video File"), defaultDir=last_path,
+                           wildcard=f"{_('Video Files')}|*.mp4;*.avi;*.mkv;*.mov;*.wmv;*.flv;*.webm;*.ogv|{_('All Files')}|*.*",
                            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as file_dialog:
             if file_dialog.ShowModal() == wx.ID_OK:
                 self.open_file(file_dialog.GetPath())
@@ -770,13 +771,12 @@ class EditorWindow(wx.Frame):
         info.SetCopyright("Copyright © 2026 I/E Ilia Prokhorov")
         info.SetWebSite("https://github.com/demensdeum/RaidenVideoRipper")
         info.SetDescription(
-            "Raiden Video Ripper is an open-source project designed for video editing and format conversion.\n"
-            "It is built using FFmpeg, VLC, wxPython and allows you to trim and convert videos to various formats."
+            _("Raiden Video Ripper is an open-source project designed for video editing and format conversion.\nIt is built using FFmpeg, VLC, wxPython and allows you to trim and convert videos to various formats.")
         )
         wx.adv.AboutBox(info)
 
     def on_about_wx(self, event):
-        wx.MessageBox(f"This application uses wxWidgets version {wx.__version__}.", "About wxWidgets", wx.OK | wx.ICON_INFORMATION)
+        wx.MessageBox(_("This application uses wxWidgets version {}.").format(wx.__version__), _("About wxWidgets"), wx.OK | wx.ICON_INFORMATION)
 
     def format_milliseconds(self, milliseconds):
         seconds, milliseconds = divmod(milliseconds, 1000)
@@ -911,11 +911,11 @@ class EditorWindow(wx.Frame):
 
     def on_start(self, event):
         if not self.file_path:
-            wx.MessageBox("Open file first!", "WUT!", wx.OK | wx.ICON_INFORMATION)
+            wx.MessageBox(_("Open file first!"), _("WUT!"), wx.OK | wx.ICON_INFORMATION)
             return
         selected_formats = [f for f in self.output_formats if f.is_selected]
         if not selected_formats:
-            wx.MessageBox("Select output formats checkboxes first!", "WUT!", wx.OK | wx.ICON_INFORMATION)
+            wx.MessageBox(_("Select output formats checkboxes first!"), _("WUT!"), wx.OK | wx.ICON_INFORMATION)
             return
         start_pos = self.timeline_widget.start_value
         end_pos = self.timeline_widget.end_value
@@ -925,7 +925,7 @@ class EditorWindow(wx.Frame):
         self.vlc_player.set_pause(1)
         self.is_processing = True
 
-        self.progress_window = ProgressBarWindow(self, "Processing", "Preparing...")
+        self.progress_window = ProgressBarWindow(self, _("Processing"), _("Preparing..."))
 
         crop_arguments = None
         if self.crop_item.IsChecked() and self.crop_overlay:
@@ -970,7 +970,7 @@ class EditorWindow(wx.Frame):
 
     def update_progress_ui(self, format_title, percentage):
         if self.progress_window:
-            self.progress_window.set_status(f"Cutting {format_title}... {percentage}%")
+            self.progress_window.set_status(f"{_('Cutting')} {format_title}... {percentage}%")
             self.progress_window.set_progress(percentage)
 
     def on_worker_finished(self, success, cancelled):
@@ -993,7 +993,7 @@ class EditorWindow(wx.Frame):
             success_window.ShowModal()
             success_window.Destroy()
         elif not success and not cancelled:
-            wx.MessageBox("Error while cutting!", "Uhh!", wx.OK | wx.ICON_ERROR)
+            wx.MessageBox(_("Error while cutting!"), _("Uhh!"), wx.OK | wx.ICON_ERROR)
 
     def cancel_in_progress(self):
         if self.worker_thread:

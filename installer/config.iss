@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Raiden Video Ripper"
-#define MyAppVersion "1.0.3.0"
+#define MyAppVersion "1.0.4.0"
 #define MyAppPublisher "DemensDeum"
 #define MyAppURL "https://www.demendseum.com"
 #define MyAppExeName "RaidenVideoRipper.exe"

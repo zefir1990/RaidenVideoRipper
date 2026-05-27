@@ -9,7 +9,7 @@ from crop_overlay import CropOverlay
 from translation import translate_text as _
 
 APPLICATION_NAME = "Raiden Video Ripper"
-APPLICATION_VERSION = "1.0.3.0"
+APPLICATION_VERSION = "1.0.4.0"
 COMPANY_NAME = "DemensDeum"
 COMPANY_DOMAIN = "demensdeum.com"
 OUTPUT_FILE_SUFFIX = "_RaidenVideoRipper_"

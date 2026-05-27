@@ -539,6 +539,7 @@ class EditorWindow(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.Bind(wx.EVT_KEY_DOWN, self.on_key_down)
         self.Bind(wx.EVT_SIZE, self.on_frame_size)
+        self.Bind(wx.EVT_MOVE, self.on_frame_move)
 
         saved_volume = self.config.ReadInt("Volume", 100)
         self.volume_slider.SetValue(saved_volume)
@@ -689,6 +690,10 @@ class EditorWindow(wx.Frame):
 
     def on_frame_size(self, event):
         self.Layout()
+        self.update_overlay_layout()
+        event.Skip()
+
+    def on_frame_move(self, event):
         self.update_overlay_layout()
         event.Skip()
 

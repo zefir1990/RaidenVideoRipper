@@ -277,6 +277,43 @@ class SuccessWindow(wx.Dialog):
     def on_ok(self, event):
         self.EndModal(wx.ID_OK)
 
+class AboutDialog(wx.Dialog):
+    def __init__(self, parent):
+        super().__init__(parent, title=_("About Raiden Video Ripper"), style=wx.DEFAULT_DIALOG_STYLE)
+        self.SetBackgroundColour(wx.Colour(30, 30, 30))
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        app_label = wx.StaticText(self, label=f"{APPLICATION_NAME} {APPLICATION_VERSION}")
+        app_label.SetFont(wx.Font(14, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+        app_label.SetForegroundColour(wx.Colour(255, 255, 255))
+        copyright_label = wx.StaticText(self, label="Copyright © 2026 I/E Ilia Prokhorov")
+        copyright_label.SetForegroundColour(wx.Colour(180, 180, 180))
+        description_text = _("Raiden Video Ripper is an open-source project designed for video editing and format conversion.\nIt is built using FFmpeg, VLC, wxPython and allows you to trim and convert videos to various formats.")
+        description_label = wx.StaticText(self, label=description_text, style=wx.ALIGN_CENTER)
+        description_label.SetForegroundColour(wx.Colour(220, 220, 220))
+        github_link = wx.adv.HyperlinkCtrl(self, wx.ID_ANY, "https://github.com/demensdeum/RaidenVideoRipper", "https://github.com/demensdeum/RaidenVideoRipper")
+        github_link.SetNormalColour(wx.Colour(0, 122, 217))
+        github_link.SetVisitedColour(wx.Colour(0, 122, 217))
+        store_link = wx.adv.HyperlinkCtrl(self, wx.ID_ANY, "https://apps.microsoft.com/detail/9nvzjs98smgc", "https://apps.microsoft.com/detail/9nvzjs98smgc")
+        store_link.SetNormalColour(wx.Colour(0, 122, 217))
+        store_link.SetVisitedColour(wx.Colour(0, 122, 217))
+        ok_button = wx.Button(self, label=_("OK"))
+        ok_button.SetBackgroundColour(wx.Colour(45, 45, 45))
+        ok_button.SetForegroundColour(wx.Colour(255, 255, 255))
+        ok_button.Bind(wx.EVT_BUTTON, self.on_ok)
+        sizer.Add(app_label, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 15)
+        sizer.Add(copyright_label, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.ALIGN_CENTER_HORIZONTAL, 10)
+        sizer.Add(description_label, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.ALIGN_CENTER_HORIZONTAL, 15)
+        sizer.Add(github_link, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 5)
+        sizer.Add(store_link, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 5)
+        sizer.Add(ok_button, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 15)
+        self.SetSizerAndFit(sizer)
+        self.CenterOnParent()
+
+    def on_ok(self, event):
+        self.EndModal(wx.ID_OK)
+
+
+
 class VideoProcessingThread(threading.Thread):
     def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False, crop_arguments=None):
         super().__init__()
@@ -765,15 +802,9 @@ class EditorWindow(wx.Frame):
         self.config.Flush()
 
     def on_about_app(self, event):
-        info = wx.adv.AboutDialogInfo()
-        info.SetName(APPLICATION_NAME)
-        info.SetVersion(APPLICATION_VERSION)
-        info.SetCopyright("Copyright © 2026 I/E Ilia Prokhorov")
-        info.SetWebSite("https://github.com/demensdeum/RaidenVideoRipper")
-        info.SetDescription(
-            _("Raiden Video Ripper is an open-source project designed for video editing and format conversion.\nIt is built using FFmpeg, VLC, wxPython and allows you to trim and convert videos to various formats.")
-        )
-        wx.adv.AboutBox(info)
+        about_window = AboutDialog(self)
+        about_window.ShowModal()
+        about_window.Destroy()
 
     def on_about_wx(self, event):
         wx.MessageBox(_("This application uses wxWidgets version {}.").format(wx.__version__), _("About wxWidgets"), wx.OK | wx.ICON_INFORMATION)

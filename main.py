@@ -463,6 +463,11 @@ class EditorWindow(wx.Frame):
         self.video_panel = wx.Panel(self, style=wx.SIMPLE_BORDER)
         self.video_panel.SetBackgroundColour(wx.Colour(0, 0, 0))
         self.vlc_player.set_hwnd(self.video_panel.GetHandle())
+        self.vlc_player.video_set_mouse_input(False)
+        self.vlc_player.video_set_key_input(False)
+        self.video_panel.Bind(wx.EVT_LEFT_DOWN, self.on_video_panel_left_down)
+        self.video_panel.Bind(wx.EVT_LEFT_UP, self.on_video_panel_left_up)
+        self.video_panel.Bind(wx.EVT_MOTION, self.on_video_panel_motion)
 
         bottom_panel = wx.Panel(self)
         bottom_panel.SetBackgroundColour(wx.Colour(30, 30, 30))
@@ -708,6 +713,24 @@ class EditorWindow(wx.Frame):
     def on_frame_move(self, event):
         self.update_overlay_layout()
         event.Skip()
+
+    def on_video_panel_left_down(self, event):
+        if hasattr(self, "crop_overlay") and self.crop_overlay and self.crop_overlay.IsShown():
+            self.crop_overlay.on_left_down(event)
+        else:
+            event.Skip()
+
+    def on_video_panel_left_up(self, event):
+        if hasattr(self, "crop_overlay") and self.crop_overlay and self.crop_overlay.IsShown():
+            self.crop_overlay.on_left_up(event)
+        else:
+            event.Skip()
+
+    def on_video_panel_motion(self, event):
+        if hasattr(self, "crop_overlay") and self.crop_overlay and self.crop_overlay.IsShown():
+            self.crop_overlay.on_motion(event)
+        else:
+            event.Skip()
 
     def update_overlay_layout(self):
         if hasattr(self, "crop_overlay") and self.crop_overlay and self.crop_overlay.IsShown():

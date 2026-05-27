@@ -135,12 +135,19 @@ class CropOverlay(wx.Frame):
             self.drag_action = action
             self.drag_start_position = pos
             self.drag_start_rect = wx.Rect(self.crop_rect)
-            self.CaptureMouse()
+            if not self.HasCapture():
+                try:
+                    self.CaptureMouse()
+                except Exception:
+                    pass
         event.Skip()
 
     def on_left_up(self, event):
         if self.HasCapture():
-            self.ReleaseMouse()
+            try:
+                self.ReleaseMouse()
+            except Exception:
+                pass
         self.drag_action = None
         event.Skip()
 

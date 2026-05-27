@@ -5,6 +5,7 @@ import threading
 import vlc
 import wx
 import wx.adv
+from crop_overlay import CropOverlay
 
 APPLICATION_NAME = "Raiden Video Ripper"
 APPLICATION_VERSION = "1.0.3.0"
@@ -276,7 +277,7 @@ class SuccessWindow(wx.Dialog):
         self.EndModal(wx.ID_OK)
 
 class VideoProcessingThread(threading.Thread):
-    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False):
+    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False, crop_arguments=None):
         super().__init__()
         self.start_position = start_position
         self.end_position = end_position
@@ -285,6 +286,7 @@ class VideoProcessingThread(threading.Thread):
         self.callback_progress = callback_progress
         self.callback_finished = callback_finished
         self.stabilize_video = stabilize_video
+        self.crop_arguments = crop_arguments
         self.current_process = None
         self.is_cancelled = False
 
@@ -315,8 +317,15 @@ class VideoProcessingThread(threading.Thread):
                 "-to", f"{self.end_position}ms"
             ]
 
+            video_filters = []
             if self.stabilize_video:
-                arguments.extend(["-vf", f"vidstabtransform=input='{trf_filename}':zoom=5"])
+                video_filters.append(f"vidstabtransform=input='{trf_filename}':zoom=5")
+            if self.crop_arguments:
+                width, height, x, y = self.crop_arguments
+                video_filters.append(f"crop={width}:{height}:{x}:{y}")
+
+            if video_filters:
+                arguments.extend(["-vf", ",".join(video_filters)])
 
             arguments.extend(output_format.custom_arguments)
             arguments.append(output_path)
@@ -512,6 +521,8 @@ class EditorWindow(wx.Frame):
         frame_sizer.Add(bottom_panel, 0, wx.EXPAND)
         self.SetSizer(frame_sizer)
 
+        self.crop_overlay = None
+
         self.create_menu()
 
         self.SetDropTarget(VideoFileDropTarget(self.open_file))
@@ -527,6 +538,7 @@ class EditorWindow(wx.Frame):
 
         self.Bind(wx.EVT_CLOSE, self.on_close)
         self.Bind(wx.EVT_KEY_DOWN, self.on_key_down)
+        self.Bind(wx.EVT_SIZE, self.on_frame_size)
 
         saved_volume = self.config.ReadInt("Volume", 100)
         self.volume_slider.SetValue(saved_volume)
@@ -535,6 +547,11 @@ class EditorWindow(wx.Frame):
         saved_width = self.config.ReadInt("window_width", 800)
         saved_height = self.config.ReadInt("window_height", 600)
         self.SetSize((saved_width, saved_height))
+
+        crop_checked = self.config.ReadBool("cropCheckboxState", False)
+        if crop_checked:
+            self.crop_overlay = CropOverlay(self)
+            self.crop_overlay.Show()
 
         if len(sys.argv) == 2:
             self.open_file(sys.argv[1])
@@ -559,6 +576,11 @@ class EditorWindow(wx.Frame):
         stabilize_checked = self.config.ReadBool("stabilizeCheckboxState", False)
         self.stabilize_item.Check(stabilize_checked)
         self.Bind(wx.EVT_MENU, self.on_stabilize_toggle, self.stabilize_item)
+
+        self.crop_item = options_menu.AppendCheckItem(wx.ID_ANY, "Crop")
+        crop_checked = self.config.ReadBool("cropCheckboxState", False)
+        self.crop_item.Check(crop_checked)
+        self.Bind(wx.EVT_MENU, self.on_crop_toggle, self.crop_item)
         
         options_menu.AppendSeparator()
 
@@ -629,6 +651,7 @@ class EditorWindow(wx.Frame):
         self.vlc_player.audio_set_volume(volume)
         self.update_duration_label()
         self.update_window_title()
+        self.update_overlay_layout()
 
     def on_media_finished(self):
         self.vlc_player.stop()
@@ -650,6 +673,54 @@ class EditorWindow(wx.Frame):
         is_checked = self.stabilize_item.IsChecked()
         self.config.WriteBool("stabilizeCheckboxState", is_checked)
         self.config.Flush()
+
+    def on_crop_toggle(self, event):
+        is_checked = self.crop_item.IsChecked()
+        self.config.WriteBool("cropCheckboxState", is_checked)
+        self.config.Flush()
+        if is_checked:
+            if not self.crop_overlay:
+                self.crop_overlay = CropOverlay(self)
+            self.crop_overlay.Show()
+            self.update_overlay_layout()
+        else:
+            if self.crop_overlay:
+                self.crop_overlay.Hide()
+
+    def on_frame_size(self, event):
+        self.Layout()
+        self.update_overlay_layout()
+        event.Skip()
+
+    def update_overlay_layout(self):
+        if hasattr(self, "crop_overlay") and self.crop_overlay and self.crop_overlay.IsShown():
+            position = self.video_panel.GetScreenPosition()
+            size = self.video_panel.GetSize()
+            self.crop_overlay.SetPosition(position)
+            self.crop_overlay.SetSize(size)
+            self.crop_overlay.Raise()
+            
+            display_rect = wx.Rect(0, 0, size.width, size.height)
+            if self.media_loaded:
+                video_size = self.vlc_player.video_get_size(0)
+                if video_size and video_size[0] > 0 and video_size[1] > 0:
+                    video_width, video_height = video_size[0], video_size[1]
+                    video_aspect = video_width / video_height
+                    panel_aspect = size.width / size.height
+                    
+                    if video_aspect > panel_aspect:
+                        display_width = size.width
+                        display_height = int(size.width / video_aspect)
+                        display_x = 0
+                        display_y = (size.height - display_height) // 2
+                    else:
+                        display_height = size.height
+                        display_width = int(size.height * video_aspect)
+                        display_x = (size.width - display_width) // 2
+                        display_y = 0
+                        
+                    display_rect = wx.Rect(display_x, display_y, display_width, display_height)
+            self.crop_overlay.set_video_display_rect(display_rect)
 
     def on_format_toggle(self, event):
         item_id = event.GetId()
@@ -824,6 +895,31 @@ class EditorWindow(wx.Frame):
 
         self.progress_window = ProgressBarWindow(self, "Processing", "Preparing...")
 
+        crop_arguments = None
+        if self.crop_item.IsChecked() and self.crop_overlay:
+            video_size = self.vlc_player.video_get_size(0)
+            if video_size and video_size[0] > 0 and video_size[1] > 0:
+                video_width, video_height = video_size[0], video_size[1]
+                display_rect = self.crop_overlay.video_display_rect
+                if not display_rect.IsEmpty():
+                    scale_factor = video_width / display_rect.width
+                    rel_x = self.crop_overlay.crop_rect.x - display_rect.x
+                    rel_y = self.crop_overlay.crop_rect.y - display_rect.y
+                    crop_w = self.crop_overlay.crop_rect.width
+                    crop_h = self.crop_overlay.crop_rect.height
+                    
+                    clamped_left = max(0, rel_x)
+                    clamped_top = max(0, rel_y)
+                    clamped_right = min(display_rect.width, rel_x + crop_w)
+                    clamped_bottom = min(display_rect.height, rel_y + crop_h)
+                    
+                    video_crop_x = int(clamped_left * scale_factor)
+                    video_crop_y = int(clamped_top * scale_factor)
+                    video_crop_w = int((clamped_right - clamped_left) * scale_factor)
+                    video_crop_h = int((clamped_bottom - clamped_top) * scale_factor)
+                    
+                    crop_arguments = [video_crop_w, video_crop_h, video_crop_x, video_crop_y]
+
         self.worker_thread = VideoProcessingThread(
             start_pos,
             end_pos,
@@ -831,7 +927,8 @@ class EditorWindow(wx.Frame):
             selected_formats,
             self.on_worker_progress,
             self.on_worker_finished,
-            self.stabilize_item.IsChecked()
+            self.stabilize_item.IsChecked(),
+            crop_arguments=crop_arguments
         )
         self.worker_thread.start()
         self.progress_window.ShowModal()

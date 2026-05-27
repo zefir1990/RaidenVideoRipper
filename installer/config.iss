@@ -45,6 +45,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\dist\RaidenVideoRipper\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\RaidenVideoRipper\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\COPYING.GPLv2"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\COPYING.GPLv3"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\COPYING.LGPLv2.1"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\COPYING.LGPLv3"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Registry]

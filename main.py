@@ -307,6 +307,15 @@ class AboutDialog(wx.Dialog):
         store_link = wx.adv.HyperlinkCtrl(self, wx.ID_ANY, "https://apps.microsoft.com/detail/9nvzjs98smgc", "https://apps.microsoft.com/detail/9nvzjs98smgc")
         store_link.SetNormalColour(wx.Colour(0, 122, 217))
         store_link.SetVisitedColour(wx.Colour(0, 122, 217))
+        wxwidgets_link = wx.adv.HyperlinkCtrl(self, wx.ID_ANY, "https://www.wxwidgets.org/", "https://www.wxwidgets.org/")
+        wxwidgets_link.SetNormalColour(wx.Colour(0, 122, 217))
+        wxwidgets_link.SetVisitedColour(wx.Colour(0, 122, 217))
+        vlc_link = wx.adv.HyperlinkCtrl(self, wx.ID_ANY, "https://www.videolan.org/vlc/", "https://www.videolan.org/vlc/")
+        vlc_link.SetNormalColour(wx.Colour(0, 122, 217))
+        vlc_link.SetVisitedColour(wx.Colour(0, 122, 217))
+        ffmpeg_link = wx.adv.HyperlinkCtrl(self, wx.ID_ANY, "https://ffmpeg.org/", "https://ffmpeg.org/")
+        ffmpeg_link.SetNormalColour(wx.Colour(0, 122, 217))
+        ffmpeg_link.SetVisitedColour(wx.Colour(0, 122, 217))
         ok_button = wx.Button(self, label=_("OK"))
         ok_button.SetBackgroundColour(wx.Colour(45, 45, 45))
         ok_button.SetForegroundColour(wx.Colour(255, 255, 255))
@@ -316,12 +325,17 @@ class AboutDialog(wx.Dialog):
         sizer.Add(description_label, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.ALIGN_CENTER_HORIZONTAL, 15)
         sizer.Add(github_link, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 5)
         sizer.Add(store_link, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 5)
+        sizer.Add(wxwidgets_link, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 5)
+        sizer.Add(vlc_link, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 5)
+        sizer.Add(ffmpeg_link, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 5)
         sizer.Add(ok_button, 0, wx.ALL | wx.ALIGN_CENTER_HORIZONTAL, 15)
         self.SetSizerAndFit(sizer)
         self.CenterOnParent()
 
     def on_ok(self, event):
         self.EndModal(wx.ID_OK)
+
+
 
 
 

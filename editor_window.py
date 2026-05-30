@@ -201,6 +201,16 @@ class EditorWindow(wx.Frame):
         self.preview_item.Check(preview_checked)
         self.timeline_widget.freeplay_mode = not preview_checked
         self.Bind(wx.EVT_MENU, self.on_preview_toggle, self.preview_item)
+
+        self.repeat_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Repeat"))
+        repeat_checked = self.config.ReadBool("repeatCheckboxState", True)
+        self.repeat_item.Check(repeat_checked)
+        self.Bind(wx.EVT_MENU, self.on_repeat_toggle, self.repeat_item)
+
+        self.show_ffmpeg_window_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Show FFmpeg window"))
+        show_ffmpeg_window_checked = self.config.ReadBool("showFfmpegWindowCheckboxState", False)
+        self.show_ffmpeg_window_item.Check(show_ffmpeg_window_checked)
+        self.Bind(wx.EVT_MENU, self.on_show_ffmpeg_window_toggle, self.show_ffmpeg_window_item)
         
         self.stabilize_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Stabilize Video"))
         stabilize_checked = self.config.ReadBool("stabilizeCheckboxState", False)
@@ -321,6 +331,16 @@ class EditorWindow(wx.Frame):
         self.config.WriteBool("previewCheckboxState", is_checked)
         self.config.Flush()
         self.timeline_widget.Refresh()
+
+    def on_repeat_toggle(self, event):
+        is_checked = self.repeat_item.IsChecked()
+        self.config.WriteBool("repeatCheckboxState", is_checked)
+        self.config.Flush()
+
+    def on_show_ffmpeg_window_toggle(self, event):
+        is_checked = self.show_ffmpeg_window_item.IsChecked()
+        self.config.WriteBool("showFfmpegWindowCheckboxState", is_checked)
+        self.config.Flush()
 
     def on_stabilize_toggle(self, event):
         is_checked = self.stabilize_item.IsChecked()
@@ -588,14 +608,24 @@ class EditorWindow(wx.Frame):
         start_val = self.timeline_widget.start_value
         end_val = self.timeline_widget.end_value
 
+        repeat_enabled = self.repeat_item.IsChecked()
         if self.preview_item.IsChecked():
             if position > end_val or position < start_val:
-                self.vlc_player.set_time(start_val)
-                position = start_val
+                if repeat_enabled:
+                    self.vlc_player.set_time(start_val)
+                    position = start_val
+                else:
+                    self.vlc_player.set_time(start_val)
+                    self.vlc_player.set_pause(1)
+                    position = start_val
         elif position >= self.file_duration - 100:
-            self.vlc_player.set_time(0)
-            self.vlc_player.stop()
-            position = 0
+            if repeat_enabled:
+                self.vlc_player.set_time(0)
+                position = 0
+            else:
+                self.vlc_player.set_time(0)
+                self.vlc_player.stop()
+                position = 0
 
         self.timeline_widget.playback_value = position
         self.timeline_widget.Refresh()
@@ -703,6 +733,7 @@ class EditorWindow(wx.Frame):
             self.stabilize_item.IsChecked(),
             crop_arguments=crop_arguments,
             watermark_arguments=watermark_arguments,
+            show_ffmpeg_window=self.show_ffmpeg_window_item.IsChecked(),
             use_random_name=self.random_name_item.IsChecked()
         )
         self.worker_thread.start()

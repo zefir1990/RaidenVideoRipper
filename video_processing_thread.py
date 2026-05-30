@@ -7,7 +7,7 @@ from utils import get_asset_path
 from constants import OUTPUT_FILE_SUFFIX
 
 class VideoProcessingThread(threading.Thread):
-    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False, crop_arguments=None, watermark_arguments=None, use_random_name=False):
+    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False, crop_arguments=None, watermark_arguments=None, show_ffmpeg_window=False, use_random_name=False):
         super().__init__()
         self.start_position = start_position
         self.end_position = end_position
@@ -18,6 +18,7 @@ class VideoProcessingThread(threading.Thread):
         self.stabilize_video = stabilize_video
         self.crop_arguments = crop_arguments
         self.watermark_arguments = watermark_arguments
+        self.show_ffmpeg_window = show_ffmpeg_window
         self.use_random_name = use_random_name
         self.current_process = None
         self.is_cancelled = False
@@ -96,17 +97,22 @@ class VideoProcessingThread(threading.Thread):
         command = [arguments[0], "-progress", "-"] + arguments[1:]
         print(f"Executing FFmpeg command: {' '.join(command)}")
         startup_info = None
+        creation_flags = 0
         if sys.platform == "win32":
-            startup_info = subprocess.STARTUPINFO()
-            startup_info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-            startup_info.wShowWindow = subprocess.SW_HIDE
+            if self.show_ffmpeg_window:
+                creation_flags = subprocess.CREATE_NEW_CONSOLE
+            else:
+                startup_info = subprocess.STARTUPINFO()
+                startup_info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startup_info.wShowWindow = subprocess.SW_HIDE
 
         try:
             self.current_process = subprocess.Popen(
                 command,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
+                stdout=None if self.show_ffmpeg_window else subprocess.PIPE,
+                stderr=None if self.show_ffmpeg_window else subprocess.STDOUT,
                 startupinfo=startup_info,
+                creationflags=creation_flags,
                 text=True,
                 bufsize=1,
                 cwd=working_directory
@@ -114,6 +120,10 @@ class VideoProcessingThread(threading.Thread):
         except Exception as e:
             print(f"Failed to start FFmpeg: {e}")
             return False
+
+        if self.show_ffmpeg_window:
+            self.current_process.wait()
+            return self.current_process.returncode == 0
 
         duration_milliseconds = self.end_position - self.start_position
         if duration_milliseconds <= 0:

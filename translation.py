@@ -54,6 +54,8 @@ TRANSLATIONS = {
         "Select Image...": "Выбрать изображение...",
         "Keep Aspect": "Сохранять пропорции",
         "Formats": "Форматы",
+        "Repeat": "Повтор",
+        "Show FFmpeg window": "Показывать окно FFmpeg",
     }
 }
 

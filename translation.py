@@ -9,6 +9,7 @@ TRANSLATIONS = {
         "Preview": "Предосмотр",
         "Stabilize Video": "Стабилизация видео",
         "Crop": "Обрезка кадра",
+        "Random name for output file": "Случайное имя для выходного файла",
         "&Options": "&Опции",
         "About Raiden Video Ripper": "О Raiden Video Ripper",
         "About wxWidgets": "О wxWidgets",

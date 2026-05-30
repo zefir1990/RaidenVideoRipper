@@ -329,7 +329,7 @@ class AboutDialog(wx.Dialog):
 
 
 class VideoProcessingThread(threading.Thread):
-    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False, crop_arguments=None):
+    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False, crop_arguments=None, use_random_name=False):
         super().__init__()
         self.start_position = start_position
         self.end_position = end_position
@@ -339,6 +339,7 @@ class VideoProcessingThread(threading.Thread):
         self.callback_finished = callback_finished
         self.stabilize_video = stabilize_video
         self.crop_arguments = crop_arguments
+        self.use_random_name = use_random_name
         self.current_process = None
         self.is_cancelled = False
 
@@ -357,10 +358,19 @@ class VideoProcessingThread(threading.Thread):
                 self.callback_finished(False, self.is_cancelled)
                 return
 
+        import uuid
+        random_prefix = uuid.uuid4().hex[:8]
+
         for output_format in self.output_formats:
             if self.is_cancelled:
                 break
-            output_path = self.video_path + OUTPUT_FILE_SUFFIX + "." + output_format.extension
+            directory = os.path.dirname(self.video_path)
+            basename = os.path.basename(self.video_path)
+            if self.use_random_name:
+                output_filename = f"{random_prefix}_{basename}{OUTPUT_FILE_SUFFIX}.{output_format.extension}"
+            else:
+                output_filename = f"{basename}{OUTPUT_FILE_SUFFIX}.{output_format.extension}"
+            output_path = os.path.join(directory, output_filename)
             arguments = [
                 "ffmpeg",
                 "-y",
@@ -643,6 +653,11 @@ class EditorWindow(wx.Frame):
         crop_checked = self.config.ReadBool("cropCheckboxState", False)
         self.crop_item.Check(crop_checked)
         self.Bind(wx.EVT_MENU, self.on_crop_toggle, self.crop_item)
+
+        self.random_name_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Random name for output file"))
+        random_name_checked = self.config.ReadBool("randomizeNameCheckboxState", False)
+        self.random_name_item.Check(random_name_checked)
+        self.Bind(wx.EVT_MENU, self.on_randomize_name_toggle, self.random_name_item)
         
         options_menu.AppendSeparator()
 
@@ -734,6 +749,11 @@ class EditorWindow(wx.Frame):
     def on_stabilize_toggle(self, event):
         is_checked = self.stabilize_item.IsChecked()
         self.config.WriteBool("stabilizeCheckboxState", is_checked)
+        self.config.Flush()
+
+    def on_randomize_name_toggle(self, event):
+        is_checked = self.random_name_item.IsChecked()
+        self.config.WriteBool("randomizeNameCheckboxState", is_checked)
         self.config.Flush()
 
     def on_crop_toggle(self, event):
@@ -1005,7 +1025,8 @@ class EditorWindow(wx.Frame):
             self.on_worker_progress,
             self.on_worker_finished,
             self.stabilize_item.IsChecked(),
-            crop_arguments=crop_arguments
+            crop_arguments=crop_arguments,
+            use_random_name=self.random_name_item.IsChecked()
         )
         self.worker_thread.start()
         self.progress_window.ShowModal()

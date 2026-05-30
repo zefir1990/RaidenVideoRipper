@@ -14,6 +14,7 @@ from success_window import SuccessWindow
 from about_dialog import AboutDialog
 from video_processing_thread import VideoProcessingThread
 from video_file_drop_target import VideoFileDropTarget
+from watermark_overlay import WatermarkOverlay
 
 class EditorWindow(wx.Frame):
     def __init__(self):
@@ -142,6 +143,7 @@ class EditorWindow(wx.Frame):
         self.SetSizer(frame_sizer)
 
         self.crop_overlay = None
+        self.watermark_overlay = None
 
         self.create_menu()
 
@@ -174,6 +176,12 @@ class EditorWindow(wx.Frame):
             self.crop_overlay = CropOverlay(self)
             self.crop_overlay.Show()
 
+        self.watermark_path = self.config.Read("watermarkPath", "")
+        watermark_checked = self.config.ReadBool("watermarkCheckboxState", False)
+        if watermark_checked and self.watermark_path and os.path.exists(self.watermark_path):
+            self.watermark_overlay = WatermarkOverlay(self, self.watermark_path)
+            self.watermark_overlay.Show()
+
         if len(sys.argv) == 2:
             self.open_file(sys.argv[1])
 
@@ -202,6 +210,14 @@ class EditorWindow(wx.Frame):
         crop_checked = self.config.ReadBool("cropCheckboxState", False)
         self.crop_item.Check(crop_checked)
         self.Bind(wx.EVT_MENU, self.on_crop_toggle, self.crop_item)
+
+        self.watermark_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Watermark"))
+        watermark_checked = self.config.ReadBool("watermarkCheckboxState", False)
+        self.watermark_item.Check(watermark_checked)
+        self.Bind(wx.EVT_MENU, self.on_watermark_toggle, self.watermark_item)
+
+        self.select_watermark_item = options_menu.Append(wx.ID_ANY, _("Select Watermark Image..."))
+        self.Bind(wx.EVT_MENU, self.on_select_watermark, self.select_watermark_item)
 
         self.random_name_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Random name for output file"))
         random_name_checked = self.config.ReadBool("randomizeNameCheckboxState", False)
@@ -318,6 +334,45 @@ class EditorWindow(wx.Frame):
             if self.crop_overlay:
                 self.crop_overlay.Hide()
 
+    def on_watermark_toggle(self, event):
+        is_checked = self.watermark_item.IsChecked()
+        if is_checked and not self.watermark_path:
+            is_checked = self.select_watermark_image_dialog()
+            self.watermark_item.Check(is_checked)
+        
+        self.config.WriteBool("watermarkCheckboxState", is_checked)
+        self.config.Flush()
+        
+        if is_checked:
+            if not self.watermark_overlay:
+                self.watermark_overlay = WatermarkOverlay(self, self.watermark_path)
+            self.watermark_overlay.Show()
+            self.update_overlay_layout()
+        else:
+            if self.watermark_overlay:
+                self.watermark_overlay.Hide()
+
+    def on_select_watermark(self, event):
+        self.select_watermark_image_dialog()
+
+    def select_watermark_image_dialog(self):
+        last_path = os.path.dirname(self.watermark_path) if self.watermark_path else wx.StandardPaths.Get().GetDocumentsDir()
+        with wx.FileDialog(self, _("Select Watermark Image"), defaultDir=last_path,
+                           wildcard=f"{_('Image Files')}|*.png;*.jpg;*.jpeg;*.bmp|{_('All Files')}|*.*",
+                           style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as file_dialog:
+            if file_dialog.ShowModal() == wx.ID_OK:
+                self.watermark_path = file_dialog.GetPath()
+                self.config.Write("watermarkPath", self.watermark_path)
+                self.config.Flush()
+                if self.watermark_overlay:
+                    self.watermark_overlay.update_watermark_image_path(self.watermark_path)
+                elif self.watermark_item.IsChecked():
+                    self.watermark_overlay = WatermarkOverlay(self, self.watermark_path)
+                    self.watermark_overlay.Show()
+                    self.update_overlay_layout()
+                return True
+        return False
+
     def on_frame_size(self, event):
         self.Layout()
         self.update_overlay_layout()
@@ -328,52 +383,75 @@ class EditorWindow(wx.Frame):
         event.Skip()
 
     def on_video_panel_left_down(self, event):
+        pos = event.GetPosition()
+        if hasattr(self, "watermark_overlay") and self.watermark_overlay and self.watermark_overlay.IsShown():
+            if self.watermark_overlay.get_drag_action(pos):
+                self.watermark_overlay.on_left_down(event)
+                return
         if hasattr(self, "crop_overlay") and self.crop_overlay and self.crop_overlay.IsShown():
-            self.crop_overlay.on_left_down(event)
-        else:
-            event.Skip()
+            if self.crop_overlay.get_drag_action(pos):
+                self.crop_overlay.on_left_down(event)
+                return
+        event.Skip()
 
     def on_video_panel_left_up(self, event):
+        if hasattr(self, "watermark_overlay") and self.watermark_overlay and self.watermark_overlay.IsShown():
+            if self.watermark_overlay.drag_action:
+                self.watermark_overlay.on_left_up(event)
+                return
         if hasattr(self, "crop_overlay") and self.crop_overlay and self.crop_overlay.IsShown():
-            self.crop_overlay.on_left_up(event)
-        else:
-            event.Skip()
+            if self.crop_overlay.drag_action:
+                self.crop_overlay.on_left_up(event)
+                return
+        event.Skip()
 
     def on_video_panel_motion(self, event):
+        pos = event.GetPosition()
+        if hasattr(self, "watermark_overlay") and self.watermark_overlay and self.watermark_overlay.IsShown():
+            if self.watermark_overlay.drag_action or self.watermark_overlay.get_drag_action(pos):
+                self.watermark_overlay.on_motion(event)
+                return
         if hasattr(self, "crop_overlay") and self.crop_overlay and self.crop_overlay.IsShown():
-            self.crop_overlay.on_motion(event)
-        else:
-            event.Skip()
+            if self.crop_overlay.drag_action or self.crop_overlay.get_drag_action(pos):
+                self.crop_overlay.on_motion(event)
+                return
+        event.Skip()
 
     def update_overlay_layout(self):
+        position = self.video_panel.GetScreenPosition()
+        size = self.video_panel.GetSize()
+        display_rect = wx.Rect(0, 0, size.width, size.height)
+        if self.media_loaded:
+            video_size = self.vlc_player.video_get_size(0)
+            if video_size and video_size[0] > 0 and video_size[1] > 0:
+                video_width, video_height = video_size[0], video_size[1]
+                video_aspect = video_width / video_height
+                panel_aspect = size.width / size.height
+                
+                if video_aspect > panel_aspect:
+                    display_width = size.width
+                    display_height = int(size.width / video_aspect)
+                    display_x = 0
+                    display_y = (size.height - display_height) // 2
+                else:
+                    display_height = size.height
+                    display_width = int(size.height * video_aspect)
+                    display_x = (size.width - display_width) // 2
+                    display_y = 0
+                    
+                display_rect = wx.Rect(display_x, display_y, display_width, display_height)
+
         if hasattr(self, "crop_overlay") and self.crop_overlay and self.crop_overlay.IsShown():
-            position = self.video_panel.GetScreenPosition()
-            size = self.video_panel.GetSize()
             self.crop_overlay.SetPosition(position)
             self.crop_overlay.SetSize(size)
-            self.crop_overlay.Raise()
-            
-            display_rect = wx.Rect(0, 0, size.width, size.height)
-            if self.media_loaded:
-                video_size = self.vlc_player.video_get_size(0)
-                if video_size and video_size[0] > 0 and video_size[1] > 0:
-                    video_width, video_height = video_size[0], video_size[1]
-                    video_aspect = video_width / video_height
-                    panel_aspect = size.width / size.height
-                    
-                    if video_aspect > panel_aspect:
-                        display_width = size.width
-                        display_height = int(size.width / video_aspect)
-                        display_x = 0
-                        display_y = (size.height - display_height) // 2
-                    else:
-                        display_height = size.height
-                        display_width = int(size.height * video_aspect)
-                        display_x = (size.width - display_width) // 2
-                        display_y = 0
-                        
-                    display_rect = wx.Rect(display_x, display_y, display_width, display_height)
             self.crop_overlay.set_video_display_rect(display_rect)
+            self.crop_overlay.Raise()
+
+        if hasattr(self, "watermark_overlay") and self.watermark_overlay and self.watermark_overlay.IsShown():
+            self.watermark_overlay.SetPosition(position)
+            self.watermark_overlay.SetSize(size)
+            self.watermark_overlay.set_video_display_rect(display_rect)
+            self.watermark_overlay.Raise()
 
     def on_format_toggle(self, event):
         item_id = event.GetId()
@@ -566,6 +644,35 @@ class EditorWindow(wx.Frame):
                     
                     crop_arguments = [video_crop_w, video_crop_h, video_crop_x, video_crop_y]
 
+        watermark_arguments = None
+        if self.watermark_item.IsChecked():
+            if not self.watermark_path or not os.path.exists(self.watermark_path):
+                wx.MessageBox(_("Error: Select watermark image first!"), _("WUT!"), wx.OK | wx.ICON_ERROR)
+                return
+            if self.watermark_overlay:
+                video_size = self.vlc_player.video_get_size(0)
+                if video_size and video_size[0] > 0 and video_size[1] > 0:
+                    video_width, video_height = video_size[0], video_size[1]
+                    display_rect = self.watermark_overlay.video_display_rect
+                    if not display_rect.IsEmpty():
+                        scale_factor = video_width / display_rect.width
+                        rel_x = self.watermark_overlay.watermark_rect.x - display_rect.x
+                        rel_y = self.watermark_overlay.watermark_rect.y - display_rect.y
+                        watermark_w = self.watermark_overlay.watermark_rect.width
+                        watermark_h = self.watermark_overlay.watermark_rect.height
+                        
+                        video_watermark_x = int(rel_x * scale_factor)
+                        video_watermark_y = int(rel_y * scale_factor)
+                        video_watermark_w = int(watermark_w * scale_factor)
+                        video_watermark_h = int(watermark_h * scale_factor)
+
+                        if crop_arguments:
+                            crop_w, crop_h, crop_x, crop_y = crop_arguments
+                            video_watermark_x = video_watermark_x - crop_x
+                            video_watermark_y = video_watermark_y - crop_y
+
+                        watermark_arguments = [self.watermark_path, video_watermark_w, video_watermark_h, video_watermark_x, video_watermark_y]
+
         self.worker_thread = VideoProcessingThread(
             start_pos,
             end_pos,
@@ -575,6 +682,7 @@ class EditorWindow(wx.Frame):
             self.on_worker_finished,
             self.stabilize_item.IsChecked(),
             crop_arguments=crop_arguments,
+            watermark_arguments=watermark_arguments,
             use_random_name=self.random_name_item.IsChecked()
         )
         self.worker_thread.start()

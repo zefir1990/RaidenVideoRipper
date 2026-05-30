@@ -7,7 +7,7 @@ from utils import get_asset_path
 from constants import OUTPUT_FILE_SUFFIX
 
 class VideoProcessingThread(threading.Thread):
-    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False, crop_arguments=None, use_random_name=False):
+    def __init__(self, start_position, end_position, video_path, output_formats, callback_progress, callback_finished, stabilize_video=False, crop_arguments=None, watermark_arguments=None, use_random_name=False):
         super().__init__()
         self.start_position = start_position
         self.end_position = end_position
@@ -17,6 +17,7 @@ class VideoProcessingThread(threading.Thread):
         self.callback_finished = callback_finished
         self.stabilize_video = stabilize_video
         self.crop_arguments = crop_arguments
+        self.watermark_arguments = watermark_arguments
         self.use_random_name = use_random_name
         self.current_process = None
         self.is_cancelled = False
@@ -52,10 +53,14 @@ class VideoProcessingThread(threading.Thread):
             arguments = [
                 self.ffmpeg_binary,
                 "-y",
-                "-i", self.video_path,
+                "-i", self.video_path
+            ]
+            if self.watermark_arguments:
+                arguments.extend(["-i", self.watermark_arguments[0]])
+            arguments.extend([
                 "-ss", f"{self.start_position}ms",
                 "-to", f"{self.end_position}ms"
-            ]
+            ])
 
             video_filters = []
             if self.stabilize_video:
@@ -64,7 +69,18 @@ class VideoProcessingThread(threading.Thread):
                 width, height, x, y = self.crop_arguments
                 video_filters.append(f"crop={width}:{height}:{x}:{y}")
 
-            if video_filters:
+            if self.watermark_arguments:
+                watermark_path, w, h, x, y = self.watermark_arguments
+                filter_parts = []
+                if video_filters:
+                    filter_parts.append(f"[0:v]{','.join(video_filters)}[main_video]")
+                    video_source = "[main_video]"
+                else:
+                    video_source = "[0:v]"
+                filter_parts.append(f"[1:v]scale={w}:{h}[watermark_scaled]")
+                filter_parts.append(f"{video_source}[watermark_scaled]overlay={x}:{y}")
+                arguments.extend(["-filter_complex", ";".join(filter_parts)])
+            elif video_filters:
                 arguments.extend(["-vf", ",".join(video_filters)])
 
             arguments.extend(output_format.custom_arguments)

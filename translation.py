@@ -42,6 +42,11 @@ TRANSLATIONS = {
         "This application uses wxWidgets version {}.": "Это приложение использует wxWidgets версии {}.",
         "Raiden Video Ripper is an open-source project designed for video editing and format conversion.\nIt is built using FFmpeg, VLC, wxPython and allows you to trim and convert videos to various formats.":
             "Raiden Video Ripper - это проект с открытым исходным кодом, разработанный для видеомонтажа и конвертации форматов.\nОн создан с использованием FFmpeg, VLC, wxPython и позволяет обрезать и конвертировать видео в различные форматы.",
+        "Watermark": "Водяной знак",
+        "Select Watermark Image...": "Выбрать изображение водяного знака...",
+        "Select Watermark Image": "Выбрать изображение водяного знака",
+        "Image Files": "Файлы изображений",
+        "Error: Select watermark image first!": "Ошибка: Выберите изображение водяного знака сначала!",
     }
 }
 

@@ -49,7 +49,10 @@ Source: "..\COPYING.GPLv2"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\COPYING.GPLv3"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\COPYING.LGPLv2.1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\COPYING.LGPLv3"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\LICENSE"; DestDir: "{app}"; DestName: "RaidenVideoRipper_LICENSE"; Flags: ignoreversion
+Source: "..\licenses\LICENSE.ffmpeg"; DestDir: "{app}"; DestName: "ffmpeg_LICENSE"; Flags: ignoreversion
+Source: "..\licenses\LICENSE.vlc"; DestDir: "{app}"; DestName: "vlc_LICENSE"; Flags: ignoreversion
+Source: "..\licenses\LICENSE.wxwidgets"; DestDir: "{app}"; DestName: "wxwidgets_LICENSE"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Registry]

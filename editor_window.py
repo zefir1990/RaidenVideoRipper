@@ -212,18 +212,21 @@ class EditorWindow(wx.Frame):
         self.crop_item.Check(crop_checked)
         self.Bind(wx.EVT_MENU, self.on_crop_toggle, self.crop_item)
 
-        self.watermark_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Watermark"))
+        watermark_menu = wx.Menu()
+        self.watermark_item = watermark_menu.AppendCheckItem(wx.ID_ANY, _("Enable"))
         watermark_checked = self.config.ReadBool("watermarkCheckboxState", False)
         self.watermark_item.Check(watermark_checked)
         self.Bind(wx.EVT_MENU, self.on_watermark_toggle, self.watermark_item)
 
-        self.select_watermark_item = options_menu.Append(wx.ID_ANY, _("Select Watermark Image..."))
+        self.select_watermark_item = watermark_menu.Append(wx.ID_ANY, _("Select Image..."))
         self.Bind(wx.EVT_MENU, self.on_select_watermark, self.select_watermark_item)
 
-        self.watermark_keep_aspect_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Watermark keep aspect"))
+        self.watermark_keep_aspect_item = watermark_menu.AppendCheckItem(wx.ID_ANY, _("Keep Aspect"))
         keep_aspect_checked = self.config.ReadBool("watermarkKeepAspectCheckboxState", True)
         self.watermark_keep_aspect_item.Check(keep_aspect_checked)
         self.Bind(wx.EVT_MENU, self.on_watermark_keep_aspect_toggle, self.watermark_keep_aspect_item)
+
+        options_menu.AppendSubMenu(watermark_menu, _("Watermark"))
 
         self.random_name_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Random name for output file"))
         random_name_checked = self.config.ReadBool("randomizeNameCheckboxState", False)
@@ -232,15 +235,17 @@ class EditorWindow(wx.Frame):
         
         options_menu.AppendSeparator()
 
+        formats_menu = wx.Menu()
         self.format_menu_items = {}
         for output_format in self.output_formats:
             key = f"{output_format.identifier}_isSelected"
             is_checked = self.config.ReadBool(key, output_format.is_selected)
             output_format.is_selected = is_checked
-            menu_item = options_menu.AppendCheckItem(wx.ID_ANY, output_format.title)
+            menu_item = formats_menu.AppendCheckItem(wx.ID_ANY, output_format.title)
             menu_item.Check(is_checked)
             self.format_menu_items[menu_item.GetId()] = output_format
             self.Bind(wx.EVT_MENU, self.on_format_toggle, menu_item)
+        options_menu.AppendSubMenu(formats_menu, _("Formats"))
         menubar.Append(options_menu, _("&Options"))
 
         about_menu = wx.Menu()

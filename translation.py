@@ -48,6 +48,12 @@ TRANSLATIONS = {
         "Image Files": "Файлы изображений",
         "Error: Select watermark image first!": "Ошибка: Выберите изображение водяного знака сначала!",
         "Watermark keep aspect": "Сохранять пропорции водяного знака",
+        "Enable Watermark": "Включить водяной знак",
+        "Output Formats": "Форматы вывода",
+        "Enable": "Включить",
+        "Select Image...": "Выбрать изображение...",
+        "Keep Aspect": "Сохранять пропорции",
+        "Formats": "Форматы",
     }
 }
 

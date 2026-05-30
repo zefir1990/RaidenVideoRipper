@@ -47,6 +47,7 @@ TRANSLATIONS = {
         "Select Watermark Image": "Выбрать изображение водяного знака",
         "Image Files": "Файлы изображений",
         "Error: Select watermark image first!": "Ошибка: Выберите изображение водяного знака сначала!",
+        "Watermark keep aspect": "Сохранять пропорции водяного знака",
     }
 }
 

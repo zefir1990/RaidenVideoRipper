@@ -179,7 +179,8 @@ class EditorWindow(wx.Frame):
         self.watermark_path = self.config.Read("watermarkPath", "")
         watermark_checked = self.config.ReadBool("watermarkCheckboxState", False)
         if watermark_checked and self.watermark_path and os.path.exists(self.watermark_path):
-            self.watermark_overlay = WatermarkOverlay(self, self.watermark_path)
+            keep_aspect = self.config.ReadBool("watermarkKeepAspectCheckboxState", True)
+            self.watermark_overlay = WatermarkOverlay(self, self.watermark_path, keep_aspect=keep_aspect)
             self.watermark_overlay.Show()
 
         if len(sys.argv) == 2:
@@ -218,6 +219,11 @@ class EditorWindow(wx.Frame):
 
         self.select_watermark_item = options_menu.Append(wx.ID_ANY, _("Select Watermark Image..."))
         self.Bind(wx.EVT_MENU, self.on_select_watermark, self.select_watermark_item)
+
+        self.watermark_keep_aspect_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Watermark keep aspect"))
+        keep_aspect_checked = self.config.ReadBool("watermarkKeepAspectCheckboxState", True)
+        self.watermark_keep_aspect_item.Check(keep_aspect_checked)
+        self.Bind(wx.EVT_MENU, self.on_watermark_keep_aspect_toggle, self.watermark_keep_aspect_item)
 
         self.random_name_item = options_menu.AppendCheckItem(wx.ID_ANY, _("Random name for output file"))
         random_name_checked = self.config.ReadBool("randomizeNameCheckboxState", False)
@@ -345,12 +351,20 @@ class EditorWindow(wx.Frame):
         
         if is_checked:
             if not self.watermark_overlay:
-                self.watermark_overlay = WatermarkOverlay(self, self.watermark_path)
+                keep_aspect = self.config.ReadBool("watermarkKeepAspectCheckboxState", True)
+                self.watermark_overlay = WatermarkOverlay(self, self.watermark_path, keep_aspect=keep_aspect)
             self.watermark_overlay.Show()
             self.update_overlay_layout()
         else:
             if self.watermark_overlay:
                 self.watermark_overlay.Hide()
+
+    def on_watermark_keep_aspect_toggle(self, event):
+        is_checked = self.watermark_keep_aspect_item.IsChecked()
+        self.config.WriteBool("watermarkKeepAspectCheckboxState", is_checked)
+        self.config.Flush()
+        if self.watermark_overlay:
+            self.watermark_overlay.keep_aspect = is_checked
 
     def on_select_watermark(self, event):
         self.select_watermark_image_dialog()
@@ -367,7 +381,8 @@ class EditorWindow(wx.Frame):
                 if self.watermark_overlay:
                     self.watermark_overlay.update_watermark_image_path(self.watermark_path)
                 elif self.watermark_item.IsChecked():
-                    self.watermark_overlay = WatermarkOverlay(self, self.watermark_path)
+                    keep_aspect = self.config.ReadBool("watermarkKeepAspectCheckboxState", True)
+                    self.watermark_overlay = WatermarkOverlay(self, self.watermark_path, keep_aspect=keep_aspect)
                     self.watermark_overlay.Show()
                     self.update_overlay_layout()
                 return True

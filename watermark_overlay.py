@@ -11,7 +11,7 @@ def set_window_color_key(hwnd, color_rgb):
     ctypes.windll.user32.SetLayeredWindowAttributes(hwnd, color_rgb, 0, lwa_colorkey)
 
 class WatermarkOverlay(wx.Frame):
-    def __init__(self, parent, watermark_image_path):
+    def __init__(self, parent, watermark_image_path, keep_aspect=True):
         super().__init__(parent, style=wx.FRAME_NO_TASKBAR | wx.BORDER_NONE | wx.FRAME_FLOAT_ON_PARENT)
         self.watermark_image_path = watermark_image_path
         self.watermark_image = None
@@ -22,6 +22,7 @@ class WatermarkOverlay(wx.Frame):
         self.drag_start_rect = None
         self.resize_threshold = 10
         self.video_display_rect = wx.Rect()
+        self.keep_aspect = keep_aspect
 
         self.load_watermark_image()
         self.SetBackgroundColour(wx.Colour(255, 0, 255))
@@ -222,22 +223,23 @@ class WatermarkOverlay(wx.Frame):
                 rect.width += diff_x
                 rect.height += diff_y
 
-            if self.drag_action in ("right", "bottom_right", "bottom"):
-                rect.height = int(rect.width / self.aspect_ratio)
-            elif self.drag_action in ("left", "bottom_left"):
-                old_right = self.drag_start_rect.Right
-                rect.height = int(rect.width / self.aspect_ratio)
-                rect.x = old_right - rect.width
-            elif self.drag_action in ("top_right", "top"):
-                old_bottom = self.drag_start_rect.Bottom
-                rect.height = int(rect.width / self.aspect_ratio)
-                rect.y = old_bottom - rect.height
-            elif self.drag_action == "top_left":
-                old_right = self.drag_start_rect.Right
-                old_bottom = self.drag_start_rect.Bottom
-                rect.height = int(rect.width / self.aspect_ratio)
-                rect.x = old_right - rect.width
-                rect.y = old_bottom - rect.height
+            if self.keep_aspect:
+                if self.drag_action in ("right", "bottom_right", "bottom"):
+                    rect.height = int(rect.width / self.aspect_ratio)
+                elif self.drag_action in ("left", "bottom_left"):
+                    old_right = self.drag_start_rect.Right
+                    rect.height = int(rect.width / self.aspect_ratio)
+                    rect.x = old_right - rect.width
+                elif self.drag_action in ("top_right", "top"):
+                    old_bottom = self.drag_start_rect.Bottom
+                    rect.height = int(rect.width / self.aspect_ratio)
+                    rect.y = old_bottom - rect.height
+                elif self.drag_action in ("top_left", "top"):
+                    old_right = self.drag_start_rect.Right
+                    old_bottom = self.drag_start_rect.Bottom
+                    rect.height = int(rect.width / self.aspect_ratio)
+                    rect.x = old_right - rect.width
+                    rect.y = old_bottom - rect.height
 
         self.watermark_rect = rect
         self.clamp_watermark_rect()

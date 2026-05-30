@@ -1,0 +1,5 @@
+APPLICATION_NAME = "Raiden Video Ripper"
+APPLICATION_VERSION = "1.0.4.0"
+COMPANY_NAME = "DemensDeum"
+COMPANY_DOMAIN = "demensdeum.com"
+OUTPUT_FILE_SUFFIX = "_RaidenVideoRipper_"

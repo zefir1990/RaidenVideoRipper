@@ -1,13 +1,7 @@
 $ErrorActionPreference = "Stop"
 
-$ProjectRoot = Resolve-Path ".."
-
-if (Test-Path "$ProjectRoot/build") {
-    Remove-Item -Path "$ProjectRoot/build" -Recurse -Force
-}
-if (Test-Path "$ProjectRoot/dist") {
-    Remove-Item -Path "$ProjectRoot/dist" -Recurse -Force
-}
+$ProjectRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $ProjectRoot
 
 if (Test-Path "build") {
     Remove-Item -Path "build" -Recurse -Force
@@ -17,7 +11,7 @@ if (Test-Path "dist") {
 }
 
 Write-Output "Running PyInstaller..."
-& python -m PyInstaller "$ProjectRoot/main.spec" --distpath "$ProjectRoot/dist" --workpath "$ProjectRoot/build"
+& python -m PyInstaller "main.spec" --distpath "dist" --workpath "build"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "PyInstaller build failed."
 }
@@ -48,6 +42,6 @@ if ($null -eq $IsccPath) {
 
 Write-Output "Using ISCC path: $IsccPath"
 Write-Output "Compiling installer..."
-& $IsccPath "$ProjectRoot/installer/config.iss"
+& $IsccPath "installer/config.iss"
 
 Write-Output "Installer build complete!"

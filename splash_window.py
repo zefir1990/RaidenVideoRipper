@@ -20,9 +20,10 @@ class SplashWindow(wx.Frame):
         
         logo_path = get_asset_path(os.path.join("resources", "images", "logo.png"))
         self.logo_image = wx.Image(logo_path, wx.BITMAP_TYPE_PNG)
-        image_width = self.logo_image.GetWidth()
-        image_height = self.logo_image.GetHeight()
+        image_width = self.logo_image.GetWidth() // 2
+        image_height = self.logo_image.GetHeight() // 2
         
+        self.logo_image = self.logo_image.Scale(image_width, image_height, wx.IMAGE_QUALITY_HIGH)
         self.SetSize((image_width, image_height))
         self.Centre()
         
